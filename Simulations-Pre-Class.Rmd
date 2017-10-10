@@ -30,15 +30,193 @@ options(scipen = 3, digits = 3)
 With this project we will simulate a famoues probability problem. This will not require knowledge of probability or statistics but only the logic to follow the steps in order to simulate this problem. This is one way to solve problems by using the computer. 
 
  1. **Gambler's Ruin**: Suppose you have a bankroll of $1000 and make bets of $100 on a fair game. By simulating the outcome directly for at most 5000 iterations of the game (or hands), estimate:
-    a. the probability that you have "busted" (lost all your money) by the time you have placed your one hundredth bet. 
+    a. the probability that you have "busted" (lost all your money) by the time you have placed your one hundredth bet.
+```{r}
+game <- function(bet, bankroll, p, n) {
+  bustedN = 0
+  while (bet <= bankroll & bustedN < n ) {
+      result = runif(1)
+      if (result > p) {
+        bankroll = bankroll + bet
+      } else {
+        bankroll = bankroll - bet
+      }
+      bustedN = bustedN + 1
+      if (bet > bankroll) {break}
+  }
+  return(bustedN)
+}
+
+trialN <- 10000
+bet <- 100
+bankroll <- 1000
+p <- 0.5
+n <- 5000
+resQ1a <- replicate(trialN, game(bet, bankroll, p, n))
+
+fewer100 <- length(which(resQ1a <= 100))
+prob = fewer100/trialN
+prob
+
+```
+
+
+
+
+
     b. the probability that you have busted by the time you have placed your five hundredth bet by simulating the outcome directly. 
+```{r}
+fewer500 <- length(which(resQ1a <= 500))
+prob = fewer500/trialN
+prob
+```
+
     c. the mean time you go bust, given that you go bust within the first 5000 hands.
+    
+```{r}
+fewer5000 <- res[which(resQ1a < 5000)]
+mean(fewer5000)
+```
+
+  
     d. the mean and variance of your bankroll after 100 hands (including busts).
+```{r}
+getbankroll <- function(bet, bankroll, p, n) {
+  bustedN = 0
+  while (bet <= bankroll & bustedN < n ) {
+      result = runif(1)
+      if (result > p) {
+        bankroll = bankroll + bet
+      } else {
+        bankroll = bankroll - bet
+      }
+      bustedN = bustedN + 1
+      if (bustedN == 100) {break}
+      if (bet > bankroll) {break}
+  }
+  return(bankroll)
+}
+
+resultroll <- replicate(5000, getbankroll(100,1000,0.5,5000))
+mean(resultroll)
+var(resultroll)
+```
+
     e. the mean and variance of your bankroll after 500 hands (including busts).
+```{r}
+getbankroll <- function(bet, bankroll, p, n) {
+  bustedN = 0
+  while (bet <= bankroll & bustedN < n ) {
+      result = runif(1)
+      if (result > p) {
+        bankroll = bankroll + bet
+      } else {
+        bankroll = bankroll - bet
+      }
+      bustedN = bustedN + 1
+      if (bustedN == 500) {break}
+      if (bet > bankroll) {break}
+  }
+  return(bankroll)
+}
+
+resQ1e <- replicate(10000, getbankroll(100,1000,0.5,5000))
+mean(resQ1e)
+var(resQ1e)
+```
+
  
 Note: you *must* stop playing if your player has gone bust. How will you handle this in the `for` loop?
+```{r}
+getbankroll <- function(bet, bankroll, p, n) {
+  bustedN = 0
+  while (bet <= bankroll & bustedN < n ) {
+      result = runif(1)
+      if (result > p) {
+        bankroll = bankroll + bet
+      } else {
+        bankroll = bankroll - bet
+      }
+      bustedN = bustedN + 1
+  
+      if (bankroll <= 0) {break}
+  }
+  return(bankroll)
+}
+
+resultroll <- replicate(10000, getbankroll(100,1000,0.5,5000))
+mean(resultroll)
+var(resultroll)
+
+
+```
 
 2. **Markov Chains**. Suppose you have a game where the probability of winning on your first hand is 48%; each time you win, that probability goes up by one percentage point for the next game (to a maximum of 100%, where it must stay), and each time you lose, it goes back down to 48%. Assume you cannot go bust and that the size of your wager is a constant $100.
     a. Is this a fair game? Simulate one hundred thousand sequential hands to determine the size of your return. Then repeat this simulation 99 more times to get a range of values to calculate the expectation.
+No, it is not a fair game. Because the probability of winning could only increase or remain constant, which means that it's becoming easier and easier to win. Especially, when the winning probability is 100%, the person could win the bet every time for sure. So the game is unfair. 
+```{r}
+getprofit <- function(bet, bankroll0, p0, n, p_inc) {
+  bankroll = bankroll0
+  p = p0
+  bustedN = 0
+
+  while (bet <= bankroll & bustedN < n) {
+      result = runif(1)
+      if (result > p) {
+        bankroll = bankroll + bet
+        p = p + p_inc
+        if (p > 1) {
+          p = 1
+        }
+      } else {
+        bankroll = bankroll - bet
+        p = p0
+      }
+      bustedN = bustedN + 1
+      if (bustedN == 100000) {break}
+      if (bet > bankroll) {break}
+  }
+  profit = bankroll - bankroll0
+  return(profit)
+}
+
+bet <- 100
+pInit <- 0.48
+n <- 100000 # required by Q
+bankrollInit <- bet * n # make sure this player does not go bust
+p_inc = 0.01
+resQ2 <- replicate(100, getprofit(bet, bankrollInit, pInit , n, p_inc))
+mean(resQ2)
+
+```
+    
+    
+    
+    
+    
+    
     b. Repeat this process but change the starting probability to a new value within 2% either way. Get the expected return after 100 repetitions. Keep exploring until you have a return value that is as fair as you can make it. Can you do this automatically?
+We can simulate this situation by trying different probabilities. For instance, if we set the probability in "getprofit" function as a sequence, then the function will run on the sequence automatically. 
+```{r}
+prob <- seq(from=0.46, to =0.50, by= .01)
+resQ2b <- replicate(100, getprofit(100, 1000, prob, 100000, p_inc=0.01))
+mean(resQ2b)
+
+```
     c. Repeat again, keeping the initial probability at 48%, but this time change the probability increment to a value different from 1%. Get the expected return after 100 repetitions. Keep changing this value until you have a return value that is as fair as you can make it. 
+```{r}
+bet = 100
+p0 = 0.48
+n = 100000
+bankrollInit <- bet * n
+p_inc <- seq(from=0, to =0.2, by= .05)
+resQ2c <- replicate(100, getprofit(bet, bankrollInit, p0, n, p_inc))
+
+```
+
+
+```
+
+```
+
+```
